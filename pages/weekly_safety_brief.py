@@ -1,74 +1,125 @@
-"""Weekly Safety Brief — Azure OpenAI generated summary."""
-
-from __future__ import annotations
-
-import json
-
 import streamlit as st
 
-from azure_integration.brief_generator import (
-    BriefGenerationError,
-    generate_weekly_brief,
-    is_configured,
-)
-from utils.data_loader import load_incidents
-from utils.summary import build_summary
-from utils.ui import page_header
-
-page_header(
-    "Weekly Safety Brief",
-    "A professional brief generated from the model and dataset results only",
+from src.analysis.patterns import (
+    load_data,
+    analyze_patterns
 )
 
-df, demo = load_incidents()
-if demo:
-    st.warning("Demo Mode — brief is based on synthetic demonstration data.", icon="⚠️")
+from src.recommendations.safety_rules import (
+    get_recommendation
+)
 
-if not is_configured():
-    st.info(
-        "Azure OpenAI is not configured. The brief will be produced offline directly from "
-        "the structured results. Add your Azure settings to Streamlit secrets to enable "
-        "AI-written narrative.",
-        icon="ℹ️",
-    )
+from src.reports.weekly_brief import (
+    generate_weekly_brief
+)
 
-summary = build_summary(df, demo)
 
-with st.expander("Structured data sent to the model", expanded=False):
-    st.caption(
-        "Only aggregated results are shared. The model is instructed to use these figures "
-        "verbatim and never to invent statistics."
-    )
-    st.code(json.dumps(summary, indent=2, default=str), language="json")
+st.title("📝 Weekly Safety Brief")
 
-if st.button("Generate Weekly Safety Brief", type="primary"):
-    with st.spinner("Preparing the weekly safety brief..."):
-        try:
-            brief, source = generate_weekly_brief(summary)
-            st.session_state["weekly_brief"] = brief
-            st.session_state["weekly_brief_source"] = source
-        except BriefGenerationError as exc:
-            st.error(str(exc))
-        except Exception:  # noqa: BLE001
-            st.error("The brief could not be generated right now. Please try again later.")
+st.write(
+    "Generate a safety brief from historical incident "
+    "patterns and standard preventive controls."
+)
 
-brief = st.session_state.get("weekly_brief")
-if brief:
-    source = st.session_state.get("weekly_brief_source")
-    if source == "offline":
-        st.caption("Generated offline from structured results (Azure OpenAI unavailable).")
-    else:
-        st.caption("Generated with Azure OpenAI from the structured results above.")
-    st.markdown(brief)
-    st.download_button(
-        "Download brief (Markdown)",
-        brief,
-        file_name="weekly_safety_brief.md",
-        mime="text/markdown",
-    )
-else:
-    st.caption(
-        "The brief covers: Weekly Safety Overview, Key High-Risk Activities, Recurring "
-        "Hazards, Priority Preventive Controls, Recommended Toolbox Talks and Management "
-        "Attention Items."
-    )
+
+if st.button(
+    "Generate Weekly Safety Brief",
+    type="primary"
+):
+
+    try:
+
+        # ----------------------------------
+        # Load incidents
+        # ----------------------------------
+
+        df = load_data()
+
+
+        # ----------------------------------
+        # Analyze patterns
+        # ----------------------------------
+
+        with st.spinner(
+            "Analyzing incident patterns..."
+        ):
+
+            patterns = analyze_patterns(
+                df
+            )
+
+
+        # ----------------------------------
+        # Generate recommendations
+        # ----------------------------------
+
+        recommendations = []
+
+        if "event_type" in df.columns:
+
+            event_types = (
+                df["event_type"]
+                .dropna()
+                .astype(str)
+                .unique()
+            )
+
+            for event_type in event_types:
+
+                recommendation = (
+                    get_recommendation(
+                        event_type
+                    )
+                )
+
+                # Avoid duplicates
+                if recommendation not in recommendations:
+
+                    recommendations.append(
+                        recommendation
+                    )
+
+
+        # ----------------------------------
+        # Generate brief
+        # ----------------------------------
+
+        with st.spinner(
+            "Generating weekly safety brief..."
+        ):
+
+            brief = generate_weekly_brief(
+                patterns,
+                recommendations
+            )
+
+
+        st.success(
+            "Weekly safety brief generated."
+        )
+
+
+        st.markdown("---")
+
+        st.markdown(
+            brief
+        )
+
+
+        # ----------------------------------
+        # Download
+        # ----------------------------------
+
+        st.download_button(
+            label="Download Safety Brief",
+            data=brief,
+            file_name="weekly_safety_brief.md",
+            mime="text/markdown"
+        )
+
+
+    except Exception as e:
+
+        st.error(
+            f"Could not generate weekly brief: {e}"
+        )

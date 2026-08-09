@@ -1,62 +1,83 @@
-"""Application entry point.
-
-Run with:  streamlit run app.py
-"""
-
-from __future__ import annotations
-
-import sys
-from pathlib import Path
-
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from ml.predict import is_demo_mode  # noqa: E402
-from utils.data_loader import load_incidents  # noqa: E402
-from utils.ui import APP_TITLE, PRIVACY_NOTE, inject_css  # noqa: E402
 
 st.set_page_config(
-    page_title=APP_TITLE,
+    page_title="Construction Safety Risk Predictor",
     page_icon="🦺",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    layout="wide"
 )
 
-inject_css()
 
-_, data_is_demo = load_incidents()
-model_is_demo = is_demo_mode()
+st.title("🦺 Construction Safety Risk Predictor")
 
-with st.sidebar:
-    st.markdown("### 🦺 Safety Risk Predictor")
-    st.caption("Construction safety decision support")
+st.markdown(
+    """
+    ## AI-Assisted Construction Safety Monitoring
 
-if model_is_demo or data_is_demo:
-    with st.sidebar:
-        st.warning(
-            "**Demo Mode**\n\nUsing synthetic demonstration data"
-            + (" and heuristic predictions." if model_is_demo else ".")
-            + " Results are illustrative only.",
-            icon="⚠️",
+    This MVP analyzes historical construction incident data to:
+
+    - Predict safety risk
+    - Identify recurring hazard patterns
+    - Highlight contributing factors
+    - Recommend preventive controls
+    - Generate a weekly safety brief
+
+    ### Privacy & Safety
+
+    The system focuses on **hazards and controls**, not individual
+    worker profiling or blame.
+    """
+)
+
+st.divider()
+
+# Load basic statistics
+try:
+    import pandas as pd
+
+    df = pd.read_csv(
+        "data/processed/incidents.csv"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric(
+            "Total Incidents",
+            len(df)
         )
 
-pages = [
-    st.Page("pages/dashboard.py", title="Dashboard", icon="📊", default=True),
-    st.Page("pages/risk_prediction.py", title="Risk Prediction", icon="🎯"),
-    st.Page("pages/planned_activities.py", title="Planned Activities", icon="🗓️"),
-    st.Page("pages/risk_patterns.py", title="Risk Patterns", icon="📈"),
-    st.Page("pages/preventive_actions.py", title="Preventive Actions", icon="🛡️"),
-    st.Page("pages/weekly_safety_brief.py", title="Weekly Safety Brief", icon="📝"),
-    st.Page("pages/about.py", title="About / Model Info", icon="ℹ️"),
-]
+    with col2:
+        if "severity" in df.columns:
+            st.metric(
+                "Fatal Incidents",
+                int(
+                    (df["severity"].astype(str).str.lower() == "fatal")
+                    .sum()
+                )
+            )
+        else:
+            st.metric("Fatal Incidents", "N/A")
 
-nav = st.navigation(pages)
+    with col3:
+        if "activity" in df.columns:
+            st.metric(
+                "Activity Types",
+                df["activity"].nunique()
+            )
+        else:
+            st.metric("Activity Types", "N/A")
 
-with st.sidebar:
-    st.divider()
-    st.caption(PRIVACY_NOTE)
+except Exception as e:
 
-nav.run()
+    st.warning(
+        f"Could not load incident statistics: {e}"
+    )
+
+st.divider()
+
+st.info(
+    "Use the pages in the sidebar to explore risk predictions, "
+    "recurring patterns, preventive actions, planned activities, "
+    "and the weekly safety brief."
+)
