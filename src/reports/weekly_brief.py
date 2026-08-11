@@ -1,289 +1,357 @@
-import os
-from dotenv import load_dotenv
+from datetime import date, timedelta
 
-load_dotenv()
-
-
-# --------------------------------------------------
-# Azure OpenAI configuration
-# --------------------------------------------------
-
-AZURE_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-AZURE_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT")
-AZURE_API_VERSION = os.getenv(
-    "AZURE_OPENAI_API_VERSION",
-    "2024-10-21"
-)
+import pandas as pd
 
 
-# --------------------------------------------------
-# Generate fallback brief
-# --------------------------------------------------
+WEEKLY_FILE = "data/processed/weekly_inputs.csv"
 
-def generate_fallback_brief(
-    patterns,
-    recommendations
+
+def get_current_week_range(reference_date=None):
+    """
+    Return Monday-Sunday for the week containing reference_date.
+    """
+
+    if reference_date is None:
+        reference_date = date.today()
+
+    start = (
+        reference_date
+        - timedelta(days=reference_date.weekday())
+    )
+
+    end = start + timedelta(days=6)
+
+    return start, end
+
+
+def get_weekly_inputs(
+    df,
+    reference_date=None
 ):
     """
-    Generates a weekly safety brief without Azure OpenAI.
-
-    This makes the MVP work even when Azure credentials
-    are unavailable.
+    Filter the input data to the current week.
     """
+
+    start, end = get_current_week_range(
+        reference_date
+    )
+
+    df = df.copy()
+
+    if df.empty:
+        return df
+
+    df["date"] = pd.to_datetime(
+        df["date"],
+        errors="coerce"
+    )
+
+    weekly = df[
+        (df["date"].dt.date >= start)
+        &
+        (df["date"].dt.date <= end)
+    ].copy()
+
+    return weekly
+
+
+def build_weekly_summary(weekly_df):
+    """
+    Create a structured summary of this week's
+    safety predictions.
+    """
+
+    if weekly_df.empty:
+
+        return {
+            "total_inputs": 0,
+            "high_risk": 0,
+            "non_high_risk": 0,
+            "top_activities": {},
+            "top_hazards": {},
+            "top_environmental_factors": {},
+            "top_human_factors": {},
+        }
+
+
+    # -----------------------------------------
+    # Risk counts
+    # -----------------------------------------
+
+    risk_values = (
+        weekly_df["risk_level"]
+        .astype(str)
+        .str.upper()
+    )
+
+    high_risk = (
+        risk_values == "HIGH"
+    ).sum()
+
+    non_high_risk = (
+        risk_values == "NON-HIGH"
+    ).sum()
+
+
+    # -----------------------------------------
+    # Top activities
+    # -----------------------------------------
+
+    if "activity" in weekly_df.columns:
+
+        top_activities = (
+            weekly_df["activity"]
+            .value_counts()
+            .head(5)
+            .to_dict()
+        )
+
+    else:
+
+        top_activities = {}
+
+
+    # -----------------------------------------
+    # Top hazards
+    # -----------------------------------------
+
+    if "event_type" in weekly_df.columns:
+
+        top_hazards = (
+            weekly_df["event_type"]
+            .value_counts()
+            .head(5)
+            .to_dict()
+        )
+
+    else:
+
+        top_hazards = {}
+
+
+    # -----------------------------------------
+    # Environmental factors
+    # -----------------------------------------
+
+    if "environmental_factor" in weekly_df.columns:
+
+        top_environmental = (
+            weekly_df["environmental_factor"]
+            .value_counts()
+            .head(5)
+            .to_dict()
+        )
+
+    else:
+
+        top_environmental = {}
+
+
+    # -----------------------------------------
+    # Human factors
+    # -----------------------------------------
+
+    if "human_factor" in weekly_df.columns:
+
+        top_human = (
+            weekly_df["human_factor"]
+            .value_counts()
+            .head(5)
+            .to_dict()
+        )
+
+    else:
+
+        top_human = {}
+
+
+    return {
+        "total_inputs": len(weekly_df),
+        "high_risk": int(high_risk),
+        "non_high_risk": int(non_high_risk),
+        "top_activities": top_activities,
+        "top_hazards": top_hazards,
+        "top_environmental_factors": top_environmental,
+        "top_human_factors": top_human,
+    }
+
+
+def generate_text_brief(
+    weekly_df,
+    summary
+):
+    """
+    Generate a human-readable weekly safety brief.
+    """
+
+    start, end = get_current_week_range()
 
     lines = []
 
-    lines.append("# Weekly Construction Safety Brief")
+    lines.append("# Weekly Safety Brief")
+    lines.append("")
+    lines.append(
+        f"**Reporting Period:** "
+        f"{start.strftime('%B %d, %Y')} - "
+        f"{end.strftime('%B %d, %Y')}"
+    )
+
     lines.append("")
 
-    lines.append("## Key Safety Patterns")
+    lines.append("## Weekly Overview")
     lines.append("")
-
-    # Activities
-    if "activity" in patterns:
-        lines.append("### Frequently Reported Activities")
-
-        for activity, count in patterns["activity"].head(5).items():
-            lines.append(
-                f"- {activity}: {count} incidents"
-            )
-
-        lines.append("")
-
-    # Events
-    if "events" in patterns:
-        lines.append("### Recurring Event Types")
-
-        for event, count in patterns["events"].head(5).items():
-            lines.append(
-                f"- {event}: {count} incidents"
-            )
-
-        lines.append("")
-
-    # Environmental factors
-    if "environment" in patterns:
-        lines.append("### Environmental Factors")
-
-        for factor, count in patterns["environment"].head(5).items():
-            lines.append(
-                f"- {factor}: {count} incidents"
-            )
-
-        lines.append("")
-
-    # Recommendations
-    lines.append("## Preventive Actions")
-    lines.append("")
-
-    if recommendations:
-
-        for recommendation in recommendations:
-
-            toolbox = recommendation.get(
-                "toolbox",
-                "General Safety"
-            )
-
-            lines.append(
-                f"### Toolbox Talk: {toolbox}"
-            )
-
-            for action in recommendation.get(
-                "actions",
-                []
-            ):
-                lines.append(
-                    f"- {action}"
-                )
-
-            lines.append("")
-
-    lines.append("## Safety Focus")
 
     lines.append(
-        "Supervisors should review the identified hazards "
-        "during pre-task planning and toolbox talks. "
-        "Controls should focus on hazard prevention, "
-        "proper PPE, equipment inspection, and safe work practices."
+        f"- Total safety inputs: "
+        f"{summary['total_inputs']}"
     )
 
-    return "\n".join(lines)
+    lines.append(
+        f"- High-risk predictions: "
+        f"{summary['high_risk']}"
+    )
+
+    lines.append(
+        f"- Non-high-risk predictions: "
+        f"{summary['non_high_risk']}"
+    )
+
+    lines.append("")
 
 
-# --------------------------------------------------
-# Generate Azure OpenAI brief
-# --------------------------------------------------
+    # -----------------------------------------
+    # Activities
+    # -----------------------------------------
 
-def generate_azure_brief(
-    patterns,
-    recommendations
-):
+    lines.append("## Top Activities")
+    lines.append("")
 
-    try:
+    if summary["top_activities"]:
 
-        from openai import AzureOpenAI
+        for activity, count in (
+            summary["top_activities"].items()
+        ):
 
-        client = AzureOpenAI(
-            api_key=AZURE_API_KEY,
-            api_version=AZURE_API_VERSION,
-            azure_endpoint=AZURE_ENDPOINT
-        )
-
-        pattern_text = ""
-
-        if "activity" in patterns:
-
-            pattern_text += "\nTop Activities:\n"
-
-            for activity, count in patterns["activity"].head(5).items():
-
-                pattern_text += (
-                    f"- {activity}: {count}\n"
-                )
-
-        if "events" in patterns:
-
-            pattern_text += "\nRecurring Events:\n"
-
-            for event, count in patterns["events"].head(5).items():
-
-                pattern_text += (
-                    f"- {event}: {count}\n"
-                )
-
-        recommendation_text = ""
-
-        for recommendation in recommendations:
-
-            recommendation_text += (
-                f"\nToolbox Topic: "
-                f"{recommendation.get('toolbox', '')}\n"
+            lines.append(
+                f"- {activity}: {count}"
             )
 
-            for action in recommendation.get(
-                "actions",
-                []
-            ):
+    else:
 
-                recommendation_text += (
-                    f"- {action}\n"
-                )
-
-        prompt = f"""
-You are a construction safety assistant.
-
-Create a concise weekly safety brief based only
-on the provided historical incident patterns and
-standard safety controls.
-
-Focus on hazards and controls, not individual workers.
-
-Do not blame workers.
-
-Do not invent incidents or statistics.
-
-Historical patterns:
-{pattern_text}
-
-Recommended controls:
-{recommendation_text}
-
-Return:
-
-1. Top safety concerns
-2. Recurring hazards
-3. Preventive actions
-4. Toolbox talk topics
-5. Short supervisor focus for the week
-"""
-
-        response = client.chat.completions.create(
-            model=AZURE_DEPLOYMENT,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You generate concise construction "
-                        "safety briefs focused on hazards "
-                        "and preventive controls."
-                    )
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.2,
-            max_tokens=800
+        lines.append(
+            "- No activity data available."
         )
 
-        return response.choices[0].message.content
+    lines.append("")
 
-    except Exception as error:
 
-        print(
-            "Azure OpenAI unavailable."
+    # -----------------------------------------
+    # Hazards
+    # -----------------------------------------
+
+    lines.append("## Top Hazards")
+    lines.append("")
+
+    if summary["top_hazards"]:
+
+        for hazard, count in (
+            summary["top_hazards"].items()
+        ):
+
+            lines.append(
+                f"- {hazard}: {count}"
+            )
+
+    else:
+
+        lines.append(
+            "- No hazard data available."
         )
 
-        print(
-            "Using fallback safety brief."
-        )
-
-        print(
-            f"Reason: {error}"
-        )
-
-        return generate_fallback_brief(
-            patterns,
-            recommendations
-        )
+    lines.append("")
 
 
-# --------------------------------------------------
-# Main public function
-# --------------------------------------------------
+    # -----------------------------------------
+    # Environmental factors
+    # -----------------------------------------
 
-def generate_weekly_brief(
-    patterns,
-    recommendations
-):
-
-    # Use Azure only when credentials exist
-    if (
-        AZURE_ENDPOINT
-        and AZURE_API_KEY
-        and AZURE_DEPLOYMENT
-    ):
-
-        return generate_azure_brief(
-            patterns,
-            recommendations
-        )
-
-    # Otherwise use local fallback
-    return generate_fallback_brief(
-        patterns,
-        recommendations
+    lines.append(
+        "## Environmental Factors"
     )
 
+    lines.append("")
 
-# --------------------------------------------------
-# Test
-# --------------------------------------------------
+    if summary["top_environmental_factors"]:
 
-if __name__ == "__main__":
+        for factor, count in (
+            summary[
+                "top_environmental_factors"
+            ].items()
+        ):
 
-    print(
-        "Weekly brief module loaded successfully."
-    )
+            lines.append(
+                f"- {factor}: {count}"
+            )
 
-    print(
-        "\nAzure configured:",
-        bool(
-            AZURE_ENDPOINT
-            and AZURE_API_KEY
-            and AZURE_DEPLOYMENT
+    else:
+
+        lines.append(
+            "- No environmental data available."
         )
-    )
+
+    lines.append("")
+
+
+    # -----------------------------------------
+    # Human factors
+    # -----------------------------------------
+
+    lines.append("## Human Factors")
+    lines.append("")
+
+    if summary["top_human_factors"]:
+
+        for factor, count in (
+            summary["top_human_factors"].items()
+        ):
+
+            lines.append(
+                f"- {factor}: {count}"
+            )
+
+    else:
+
+        lines.append(
+            "- No human-factor data available."
+        )
+
+    lines.append("")
+
+
+    # -----------------------------------------
+    # Safety focus
+    # -----------------------------------------
+
+    lines.append("## Recommended Safety Focus")
+    lines.append("")
+
+    if summary["high_risk"] > 0:
+
+        lines.append(
+            "⚠️ High-risk activities were identified "
+            "this week. Prioritize review of the "
+            "identified hazards and appropriate "
+            "engineering, administrative, and PPE "
+            "controls."
+        )
+
+    else:
+
+        lines.append(
+            "No HIGH risk predictions were recorded "
+            "this week. Continue routine hazard "
+            "identification and preventive controls."
+        )
+
+
+    return "\n".join(lines)

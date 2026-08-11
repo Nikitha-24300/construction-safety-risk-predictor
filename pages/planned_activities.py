@@ -29,8 +29,6 @@ st.dataframe(
 )
 
 
-st.subheader("Activity Summary")
-
 if "activity" in df.columns:
 
     counts = (
