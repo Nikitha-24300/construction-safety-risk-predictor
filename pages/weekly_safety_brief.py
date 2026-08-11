@@ -151,33 +151,6 @@ with col3:
         summary["non_high_risk"]
     )
 
-
-# ============================================================
-# RISK DISTRIBUTION
-# ============================================================
-
-st.divider()
-
-st.subheader("Risk Distribution")
-
-risk_data = pd.DataFrame(
-    {
-        "Risk Level": [
-            "HIGH",
-            "NON-HIGH"
-        ],
-        "Count": [
-            summary["high_risk"],
-            summary["non_high_risk"]
-        ]
-    }
-)
-
-st.bar_chart(
-    risk_data.set_index("Risk Level")
-)
-
-
 # ============================================================
 # TOP HAZARDS
 # ============================================================
