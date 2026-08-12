@@ -3,3 +3,6 @@ date,activity,location_type,event_type,environmental_factor,human_factor,descrip
 2026-08-11,Regularly Assigned,"Excavation, landfill",Ingestion,Illumination,Insufficient /Lack/Written Work Practice Program,,"{'risk_level': 'HIGH', 'probabilities': {'HIGH': 0.6494, 'NON-HIGH': 0.3506}}"
 2026-08-10,Regularly Assigned,Multi-family dwelling,Fall (same level),Illumination,Insufficient /Lack/Protective Work Clothing/Equipment,,"{'risk_level': 'HIGH', 'probabilities': {'HIGH': 0.7002, 'NON-HIGH': 0.2998}}"
 2026-08-12,Regularly Assigned,Commercial building,Fall (same level),Gas/Vapor/Mist/Fume/Smoke/Dust,Equipment Inappropriate For Operation,,"{'risk_level': 'HIGH', 'probabilities': {'HIGH': 0.6085, 'NON-HIGH': 0.3915}}"
+2026-08-11,Regularly Assigned,Manufacturing plant,Struck against,Materials Handling Equip./Method,Distracting Actions By Others,,"{'risk_level': 'HIGH', 'probabilities': {'HIGH': 0.5894, 'NON-HIGH': 0.4106}}"
+2026-08-11,Regularly Assigned,Manufacturing plant,Struck against,Materials Handling Equip./Method,Distracting Actions By Others,,"{'risk_level': 'HIGH', 'probabilities': {'HIGH': 0.5894, 'NON-HIGH': 0.4106}}"
+2026-08-12,Regularly Assigned,"Highway, road, street",Rubbed/abraded,Flying Object Action,Insufficient /Lack/Expose/Biological Monitoring.,,"{'risk_level': 'HIGH', 'probabilities': {'HIGH': 0.7449, 'NON-HIGH': 0.2551}}"

@@ -135,22 +135,6 @@ with col1:
         summary["total_inputs"]
     )
 
-
-with col2:
-
-    st.metric(
-        "HIGH Risk",
-        summary["high_risk"]
-    )
-
-
-with col3:
-
-    st.metric(
-        "NON-HIGH Risk",
-        summary["non_high_risk"]
-    )
-
 # ============================================================
 # TOP HAZARDS
 # ============================================================

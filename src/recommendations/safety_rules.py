@@ -212,6 +212,190 @@ SAFETY_RULES = {
             "Separate pedestrians from moving equipment",
             "Wear mandatory PPE"
         ]
+    },
+
+    # ==========================================================
+    # CONSTRUCTION ACTIVITY CATEGORIES
+    # ==========================================================
+
+    "Scaffolding": {
+        "risk": "HIGH",
+        "toolbox": "Scaffold Safety and Inspection",
+        "actions": [
+            "Conduct scaffold safety assessment before work",
+            "Inspect scaffolding before use",
+            "Check scaffold stability and support",
+            "Inspect platforms and access points",
+            "Provide appropriate guardrails and fall protection",
+            "Do not exceed intended scaffold load",
+            "Keep scaffold platforms clear of unnecessary materials",
+            "Reinspect scaffolding after modification or significant changes"
+        ]
+    },
+
+    "Working at Height": {
+        "risk": "HIGH",
+        "toolbox": "Working at Height Safety",
+        "actions": [
+            "Conduct work-at-height risk assessment",
+            "Identify open edges and floor openings",
+            "Provide appropriate fall protection",
+            "Inspect ladders and access equipment",
+            "Provide safe access and egress",
+            "Protect exposed edges and openings",
+            "Secure tools and materials against falling",
+            "Maintain good housekeeping"
+        ]
+    },
+
+    "Roof Work": {
+        "risk": "HIGH",
+        "toolbox": "Roof Work Safety",
+        "actions": [
+            "Conduct roof work risk assessment",
+            "Identify roof edges and openings",
+            "Identify fragile roof surfaces",
+            "Provide appropriate fall protection",
+            "Provide safe roof access",
+            "Protect roof openings",
+            "Control falling-object hazards",
+            "Maintain good housekeeping"
+        ]
+    },
+
+    "Ladders": {
+        "risk": "HIGH",
+        "toolbox": "Ladder Safety",
+        "actions": [
+            "Inspect ladders before use",
+            "Use the correct ladder for the task",
+            "Place ladders on stable surfaces",
+            "Secure ladders where required",
+            "Maintain safe climbing practices",
+            "Do not use damaged ladders",
+            "Keep ladder areas clear",
+            "Avoid unsafe overreaching"
+        ]
+    },
+
+    "Lifting & Material Handling": {
+        "risk": "HIGH",
+        "toolbox": "Lifting and Material Handling Safety",
+        "actions": [
+            "Conduct lifting risk assessment",
+            "Inspect lifting equipment before use",
+            "Verify load capacity",
+            "Secure loads properly",
+            "Establish exclusion zones",
+            "Keep personnel away from suspended loads",
+            "Control line-of-fire hazards",
+            "Maintain clear communication during lifting"
+        ]
+    },
+
+    "Excavation & Trenching": {
+        "risk": "HIGH",
+        "toolbox": "Excavation and Trenching Safety",
+        "actions": [
+            "Conduct excavation risk assessment",
+            "Identify underground utilities",
+            "Inspect excavation conditions",
+            "Provide appropriate protective systems",
+            "Provide safe access and egress",
+            "Keep materials away from excavation edges",
+            "Control water accumulation where required",
+            "Prevent unauthorized access"
+        ]
+    },
+
+    "Concrete Work": {
+        "risk": "HIGH",
+        "toolbox": "Concrete and Formwork Safety",
+        "actions": [
+            "Inspect formwork before concrete placement",
+            "Check supports and bracing",
+            "Verify stability of temporary structures",
+            "Control exposed reinforcement hazards",
+            "Inspect concrete pumping equipment",
+            "Maintain safe communication during concrete placement",
+            "Control equipment movement",
+            "Maintain good housekeeping"
+        ]
+    },
+
+    "Electrical Work": {
+        "risk": "HIGH",
+        "toolbox": "Construction Electrical Safety",
+        "actions": [
+            "Conduct electrical risk assessment",
+            "Inspect temporary electrical systems",
+            "Inspect electrical equipment before use",
+            "Control access to energized equipment",
+            "Follow appropriate isolation procedures",
+            "Do not use damaged cables or plugs",
+            "Use appropriate electrical PPE",
+            "Restrict electrical work to authorized personnel"
+        ]
+    },
+
+    "Demolition": {
+        "risk": "HIGH",
+        "toolbox": "Demolition Safety",
+        "actions": [
+            "Conduct demolition risk assessment",
+            "Assess structural conditions",
+            "Follow a planned demolition sequence",
+            "Establish exclusion zones",
+            "Control falling materials",
+            "Control dust exposure",
+            "Keep unauthorized personnel away",
+            "Monitor for structural instability"
+        ]
+    },
+
+    "Heavy Equipment / Vehicles": {
+        "risk": "HIGH",
+        "toolbox": "Heavy Equipment and Vehicle Safety",
+        "actions": [
+            "Inspect equipment before operation",
+            "Identify equipment movement areas",
+            "Separate pedestrian and vehicle routes",
+            "Control reversing operations",
+            "Maintain awareness of blind spots",
+            "Keep personnel away from moving equipment",
+            "Use appropriate communication and signaling",
+            "Remove defective equipment from service"
+        ]
+    },
+
+    "Welding / Hot Work": {
+        "risk": "HIGH",
+        "toolbox": "Welding and Hot Work Safety",
+        "actions": [
+            "Inspect hot-work equipment",
+            "Control combustible materials",
+            "Provide adequate ventilation",
+            "Control sparks and hot materials",
+            "Use appropriate protective equipment",
+            "Maintain fire-prevention controls",
+            "Keep the work area clean",
+            "Store gas cylinders safely"
+        ]
+    },
+
+    "Confined Spaces": {
+        "risk": "HIGH",
+        "toolbox": "Confined Space Safety",
+        "actions": [
+            "Assess the confined space before entry",
+            "Identify potential atmospheric hazards",
+            "Perform required atmospheric testing",
+            "Provide ventilation where required",
+            "Control hazardous energy sources",
+            "Establish appropriate emergency arrangements",
+            "Maintain communication during work",
+            "Prevent unauthorized entry"
+        ]
     }
 }
 
@@ -225,7 +409,9 @@ def get_recommendation(event_type):
     if not isinstance(event_type, str):
         event_type = ""
 
-    # Exact hazard type match
+    event_type = event_type.strip()
+
+    # Exact match
     if event_type in SAFETY_RULES:
         return SAFETY_RULES[event_type]
 
@@ -235,13 +421,65 @@ def get_recommendation(event_type):
         if hazard.lower() == event_type.lower():
             return recommendation
 
+    # Related construction keywords
+    text = event_type.lower()
+
+    keyword_mapping = {
+
+        "scaffold": "Scaffolding",
+
+        "working at height": "Working at Height",
+        "work at height": "Working at Height",
+
+        "roof": "Roof Work",
+
+        "ladder": "Ladders",
+
+        "lifting": "Lifting & Material Handling",
+        "hoisting": "Lifting & Material Handling",
+        "crane": "Lifting & Material Handling",
+
+        "excavat": "Excavation & Trenching",
+        "trench": "Excavation & Trenching",
+
+        "concrete": "Concrete Work",
+        "formwork": "Concrete Work",
+        "rebar": "Concrete Work",
+        "reinforcement": "Concrete Work",
+
+        "electrical": "Electrical Work",
+        "electric": "Electrical Work",
+
+        "demolition": "Demolition",
+
+        "excavator": "Heavy Equipment / Vehicles",
+        "bulldozer": "Heavy Equipment / Vehicles",
+        "dump truck": "Heavy Equipment / Vehicles",
+        "forklift": "Heavy Equipment / Vehicles",
+
+        "welding": "Welding / Hot Work",
+        "cutting": "Welding / Hot Work",
+        "grinding": "Welding / Hot Work",
+        "hot work": "Welding / Hot Work",
+
+        "confined space": "Confined Spaces",
+        "confined": "Confined Spaces"
+    }
+
+    for keyword, category in keyword_mapping.items():
+
+        if keyword in text:
+            return SAFETY_RULES[category]
+
     # Default recommendation
     return {
         "risk": "STANDARD",
         "toolbox": "General Construction Safety",
         "actions": [
             "Conduct pre-task risk assessment",
-            "Inspect tools before use",
+            "Identify activity-specific hazards",
+            "Inspect tools and equipment before use",
+            "Use appropriate safety controls",
             "Wear mandatory PPE",
             "Maintain good housekeeping"
         ]
